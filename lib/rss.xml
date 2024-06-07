@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[KongBLOG (技术博客)]]></title><description><![CDATA[Obsidian digital garden]]></description><link>https://kongexp.github.io/blog/</link><image><url>https://kongexp.github.io/blog/lib/media/favicon.png</url><title>KongBLOG (技术博客)</title><link>https://kongexp.github.io/blog/</link></image><generator>Webpage HTML Export plugin for Obsidian</generator><lastBuildDate>Fri, 07 Jun 2024 15:35:08 GMT</lastBuildDate><atom:link href="https://kongexp.github.io/blog/lib/rss.xml" rel="self" type="application/rss+xml"/><pubDate>Fri, 07 Jun 2024 15:35:07 GMT</pubDate><copyright><![CDATA[kongexp]]></copyright><ttl>60</ttl><dc:creator>kongexp</dc:creator><item><title><![CDATA[量化计算中电子密度的积分方法]]></title><description><![CDATA[<a class="tag" href="https://kongexp.github.io/blog/?query=tag:计算化学" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#计算化学</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:色散校正" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#色散校正</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:格点积分" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#格点积分</a> 
+ <br><a href="https://kongexp.github.io/blog?query=tag:计算化学" class="tag" target="_blank" rel="noopener">#计算化学</a> <a href="https://kongexp.github.io/blog?query=tag:色散校正" class="tag" target="_blank" rel="noopener">#色散校正</a> <a href="https://kongexp.github.io/blog?query=tag:格点积分" class="tag" target="_blank" rel="noopener">#格点积分</a><br>Author: kongexp<br>
+Created: 2022-08-17<br>
+Last edited: 2022-08-17<br>
+<br><a data-href="#DFT计算得到的原子电荷" href="https://kongexp.github.io/blog/#DFT计算得到的原子电荷" class="internal-link" target="_self" rel="noopener">DFT计算得到的原子电荷</a>
+<br><a data-href="#计算空间积分的数值方法" href="https://kongexp.github.io/blog/#计算空间积分的数值方法" class="internal-link" target="_self" rel="noopener">计算空间积分的数值方法</a>
+
+<br><a data-href="#格点积分" href="https://kongexp.github.io/blog/#格点积分" class="internal-link" target="_self" rel="noopener">格点积分</a>
+<br><a data-href="#角度积分数值求解：Lebedev生成单位球面节点" href="https://kongexp.github.io/blog/#角度积分数值求解：Lebedev生成单位球面节点" class="internal-link" target="_self" rel="noopener">角度积分数值求解：Lebedev生成单位球面节点</a>
+<br><a data-href="#径向积分数值求解: 第二类Gauss-Chebyshev积分" href="https://kongexp.github.io/blog/#径向积分数值求解:_第二类Gauss-Chebyshev积分" class="internal-link" target="_self" rel="noopener">径向积分数值求解: 第二类Gauss-Chebyshev积分</a>
+<br><a data-href="#Gauss-Chebyshev求积公式" href="https://kongexp.github.io/blog/#Gauss-Chebyshev求积公式" class="internal-link" target="_self" rel="noopener">Gauss-Chebyshev求积公式</a>
+
+
+<br><a data-href="#应用案例" href="https://kongexp.github.io/blog/#应用案例" class="internal-link" target="_self" rel="noopener">应用案例</a>
+
+<br><a data-href="#任务" href="https://kongexp.github.io/blog/#任务" class="internal-link" target="_self" rel="noopener">任务</a>
+<br><a data-href="#结果检验" href="https://kongexp.github.io/blog/#结果检验" class="internal-link" target="_self" rel="noopener">结果检验</a>
+
+
+<br><a data-href="#Appendix" href="https://kongexp.github.io/blog/#Appendix" class="internal-link" target="_self" rel="noopener">Appendix</a>
+<br><a data-href="#References" href="https://kongexp.github.io/blog/#References" class="internal-link" target="_self" rel="noopener">References</a>
+<br><br><br>DFT计算得到电子密度后，通过积分可以得到每个成键原子的电子电荷。<br>
+The total electronic charge in our bonded atom is given by<br>
+也就是把成键原子在每个空间位置的电子数积分在一起。<br>而成键原子在空间位置的电子密度为<br>
+这里的就是量化计算得到的电子密度分布，比如Gaussian输出的.fchk文件就包含此信息。而这里的权重系数，即Hirshfeld weight<a href="https://kongexp.github.io/blog/#fn-1-11b659f532e209f6" class="footnote-link" target="_self" rel="noopener">[1]</a> ，则可以通过非键状态的电子密度比例（也就是简单的求和）求出：<br>
+现在只剩下各个原子的电子密度分布函数未知了，用当前方法（比如DFT）算自由原子（基态原子）可以得到。当然，得到的是数列{distance, electrons}，具体计算时需要通过内插值得到所需距离的电子数。<br>至此，从DFT计算得到的分子电子密度分布出发，可以得到分子中每个原子的电子数，当然也就知道每个原子所带电荷数。<br><br>已经知道计算原子电子数的过程，如何实际地在代码中实现这些计算呢？关键在于，如何计算空间积分部分呢？复杂的实际问题往往难以通过公式求得解析解，此时可以转向数值求解。<br><br>
+这里强烈推荐并感谢Sobereva大神的博文《密度泛函计算中的格点积分方法》<a href="https://kongexp.github.io/blog/#fn-2-11b659f532e209f6" class="footnote-link" target="_self" rel="noopener">[2]</a>。
+<br>类似公式(1)的全空间积分在量化计算中比较普遍，形式可以总结为<br>
+球坐标下求解该积分更符合直觉也更容易，例如可以以原子为中心在球极坐标下积分。假设笛卡尔坐标下的体积微元为长方形（），则可以用三重公式<br><br>重写积分为<br>
+用数值方法实现这个积分是容易的，假设各自取a, b, c个点，得到个空间格点。<br><br>现在考虑如何用数值方法快速求解这个角度积分。<br>实际上，对于R来说，格点是不变的。如果事先把单位球的一些固定格点计算出来，那么径向上的积分就都可以复用这一套单位球积分。这就是Lebedev方法。<br>Lebedev提供了计算单位球面的格点位置和权重的方法，实际计算时选取合适的格点数，得到列表。其中在单位球面上，w是该点的积分权重，。因为积分的结果为1，而单位球面实际面积为，所以这个单位球上的积分结果要乘以 。<br><br>此外，还能如何加速？尝试把角度和径向的积分分开。<br>首先假设两部分独立，则积分可以分离为<br>
+如果把角度部分看作一个函数，则径向部分为<br>
+<br><br>特定积分形式可以做近似，知名的Gauss-Chebyshev公式<a href="https://kongexp.github.io/blog/#fn-3-11b659f532e209f6" class="footnote-link" target="_self" rel="noopener">[3]</a>为<br>
+<br>其积分形式与当前目标有些差异。可以通过<br>
+把上的空间位置转换为区间的。<br>这里C可以是任意常数，它决定了时的值，也就是径向格点中间区域对应的球极半径。数学上，C是对这些格点的放缩；对于我们的问题，C的选择是值得探讨的。希望更多的格点放置在电子密度更高的位置，就应该每种原子分别选取格点，此时一种合理的做法是取C为Bragg-Slater radius（Github上Hirshfeld项目<a href="https://kongexp.github.io/blog/#fn-4-11b659f532e209f6" class="footnote-link" target="_self" rel="noopener">[4]</a>）。这里Bragg-Slater radius指内核电子半径，表征两个原子能多接近对方。<br><br><br>Tkatchenko在2009年的文章<a href="https://kongexp.github.io/blog/#fn-5-11b659f532e209f6" class="footnote-link" target="_self" rel="noopener">[5]</a>中提出的方法可以计算DFT方法下的分子色散校正项，该方法已在MBD包中实现。通常我们使用包涵了MBD的VASP程序来计算晶体的色散校正，如果计算对象是分子则需要构造大单胞，不仅麻烦而且浪费计算量。而直接采用MBD包计算时，输入文件中需要给出分子中每个原子的，这个数值需要有代码工具来计算。<br><br>MBD包的test数据中，有苯分子的输入文件.xyz，其中最后一列就是DFT得到（精度不明，可能还根据高精度结果调整过）的，可以与修改后的Hershfeld代码输出结果进行比较：<br>
+<img alt="Pasted image 20231027164544.png" src="https://kongexp.github.io/blog/index/计算化学/量化计算中电子密度的积分方法/pasted-image-20231027164544.png" style="width: 900px; max-width: 100%;"><br>二者差值在可接受范围内，判断代码基本正确。<br><br>球坐标的三重积分公式：<br>
+<br><br><br><br><br><br><br>
+<br>
+<br>Hirshfeld, F. L. (1977). Bonded-atom fragments for describing molecular charge densities.&nbsp;Theoretica chimica acta,&nbsp;44(2), 129-138.<a href="https://kongexp.github.io/blog/#fnref-1-11b659f532e209f6" class="footnote-backref footnote-link" target="_self" rel="noopener">↩︎</a>
+<br><a rel="noopener" class="external-link" href="http://sobereva.com/69" target="_blank">http://sobereva.com/69</a><a href="https://kongexp.github.io/blog/#fnref-2-11b659f532e209f6" class="footnote-backref footnote-link" target="_self" rel="noopener">↩︎</a>
+<br>陆金甫《数值方法》<a href="https://kongexp.github.io/blog/#fnref-3-11b659f532e209f6" class="footnote-backref footnote-link" target="_self" rel="noopener">↩︎</a>
+<br><a rel="noopener" class="external-link" href="https://github.com/lidaobing/hirshfeld" target="_blank">https://github.com/lidaobing/hirshfeld</a><a href="https://kongexp.github.io/blog/#fnref-4-11b659f532e209f6" class="footnote-backref footnote-link" target="_self" rel="noopener">↩︎</a>
+<br>Tkatchenko, A., &amp; Scheffler, M. (2009). Accurate molecular van der Waals interactions from ground-state electron density and free-atom reference data.&nbsp;Physical review letters,&nbsp;102(7), 073005.<a href="https://kongexp.github.io/blog/#fnref-5-11b659f532e209f6" class="footnote-backref footnote-link" target="_self" rel="noopener">↩︎</a>
+]]></description><link>https://kongexp.github.io/blog/index/计算化学/量化计算中电子密度的积分方法/量化计算中电子密度的积分方法.html</link><guid isPermaLink="false">index/计算化学/量化计算中电子密度的积分方法/量化计算中电子密度的积分方法.md</guid><dc:creator><![CDATA[kongexp]]></dc:creator><pubDate>Fri, 07 Jun 2024 15:25:45 GMT</pubDate><enclosure url="https://kongexp.github.io/blog/index/计算化学/量化计算中电子密度的积分方法/pasted-image-20231027164544.png" length="0" type="image/png"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;https://kongexp.github.io/blog/index/计算化学/量化计算中电子密度的积分方法/pasted-image-20231027164544.png&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[基于Njmon和Grafana实现性能实时监控]]></title><description><![CDATA[<a class="tag" href="https://kongexp.github.io/blog/?query=tag:性能测试" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#性能测试</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:Njmon" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#Njmon</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:Nmon" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#Nmon</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:Grafana" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#Grafana</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:InfluxDB" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#InfluxDB</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:自动流" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#自动流</a> 
+ <br><a href="https://kongexp.github.io/blog?query=tag:性能测试" class="tag" target="_blank" rel="noopener">#性能测试</a> <a href="https://kongexp.github.io/blog?query=tag:Njmon" class="tag" target="_blank" rel="noopener">#Njmon</a> <a href="https://kongexp.github.io/blog?query=tag:Nmon" class="tag" target="_blank" rel="noopener">#Nmon</a> <a href="https://kongexp.github.io/blog?query=tag:Grafana" class="tag" target="_blank" rel="noopener">#Grafana</a> <a href="https://kongexp.github.io/blog?query=tag:InfluxDB" class="tag" target="_blank" rel="noopener">#InfluxDB</a> <a href="https://kongexp.github.io/blog?query=tag:自动流" class="tag" target="_blank" rel="noopener">#自动流</a><br>Author: kongexp<br>
+Created: 2023-02-02<br>
+Updated: 2023-02-02<br>
+ATTENTION<br>
+主要参考博文 <a rel="noopener" class="external-link" href="https://www.cnblogs.com/daodaotest/p/12508181.html" target="_blank">https://www.cnblogs.com/daodaotest/p/12508181.html</a> 
+<br>
+<br><a data-href="#引言" href="https://kongexp.github.io/blog/#引言" class="internal-link" target="_self" rel="noopener">引言</a>
+<br><a data-href="#数据库设置" href="https://kongexp.github.io/blog/#数据库设置" class="internal-link" target="_self" rel="noopener">数据库设置</a>
+
+<br><a data-href="#安装 InfluxDB 并启动服务" href="https://kongexp.github.io/blog/#安装_InfluxDB_并启动服务" class="internal-link" target="_self" rel="noopener">安装 InfluxDB 并启动服务</a>
+<br><a data-href="#创建 njmon 库" href="https://kongexp.github.io/blog/#创建_njmon_库" class="internal-link" target="_self" rel="noopener">创建 njmon 库</a>
+<br><a data-href="#启用用户认证" href="https://kongexp.github.io/blog/#启用用户认证" class="internal-link" target="_self" rel="noopener">启用用户认证</a>
+
+
+<br><a data-href="#数据采集" href="https://kongexp.github.io/blog/#数据采集" class="internal-link" target="_self" rel="noopener">数据采集</a>
+
+<br><a data-href="#安装 njmon" href="https://kongexp.github.io/blog/#安装_njmon" class="internal-link" target="_self" rel="noopener">安装 njmon</a>
+<br><a data-href="#下载 njmon_tools" href="https://kongexp.github.io/blog/#下载_njmon_tools" class="internal-link" target="_self" rel="noopener">下载 njmon_tools</a>
+<br><a data-href="#njmon2influx 注入数据" href="https://kongexp.github.io/blog/#njmon2influx_注入数据" class="internal-link" target="_self" rel="noopener">njmon2influx 注入数据</a>
+
+
+<br><a data-href="#可视化" href="https://kongexp.github.io/blog/#可视化" class="internal-link" target="_self" rel="noopener">可视化</a>
+
+<br><a data-href="#安装 Grafana" href="https://kongexp.github.io/blog/#安装_Grafana" class="internal-link" target="_self" rel="noopener">安装 Grafana</a>
+<br><a data-href="#安装插件" href="https://kongexp.github.io/blog/#安装插件" class="internal-link" target="_self" rel="noopener">安装插件</a>
+<br><a data-href="#添加 Influx 数据库" href="https://kongexp.github.io/blog/#添加_Influx_数据库" class="internal-link" target="_self" rel="noopener">添加 Influx 数据库</a>
+<br><a data-href="#导入仪表盘模板" href="https://kongexp.github.io/blog/#导入仪表盘模板" class="internal-link" target="_self" rel="noopener">导入仪表盘模板</a>
+<br><a data-href="#自定义监控内容" href="https://kongexp.github.io/blog/#自定义监控内容" class="internal-link" target="_self" rel="noopener">自定义监控内容</a>
+
+
+<br><a data-href="#总结" href="https://kongexp.github.io/blog/#总结" class="internal-link" target="_self" rel="noopener">总结</a>
+<br><a data-href="#References" href="https://kongexp.github.io/blog/#References" class="internal-link" target="_self" rel="noopener">References</a>
+<br><br><br>笔者开发的软件部署前需要进行性能测试，采用 njmon 进行资源监控，主要关注 CPU 和内存的使用情况。测试远程运行，我希望能实时监测其状态，若发现问题可以及时反应。最终我选择的方案是：njmon 向 InfluxDB 存储统计数据，再通过 Grafana 实时读取展示，这种可视化监控服务搭建简单，笔者在 Ubuntu 20.04.5 LTS 下实现了这个流程，约消耗 3 小时。<br><br><br>InfluxDB 是为高读写负载设计的时序型数据库，采用类 SQL 语法，旨在用作涉及大量时间戳数据的存储，非常适合性能监测场景。<br><br>
+官方教程： <a rel="noopener" class="external-link" href="https://docs.influxdata.com/influxdb/v1.7/introduction/installation/" target="_blank">https://docs.influxdata.com/influxdb/v1.7/introduction/installation/</a>
+<br>注意，这里官网教程只指定了 InfluxDB 1.7.5，笔者实测 1.8.10 可用，而网络上有人报告 njmon 不支持 InfluxDB v2。综合上述信息，建议只用 v1 版本。<br>Ubuntu系统需要添加源<br>wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo apt-key add -
+source /etc/lsb-release
+echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+复制<br>然后安装并启动<br>sudo apt update
+sudo apt install influxdb
+sudo service influxdb start # 开启服务
+复制<br><br>$ influx #启动influx
+&gt; create database njmon # 创建新的database
+&gt; show databases # 查看现有database
+name: databases
+name
+----
+_internal
+njmon
+&gt; exit
+复制<br><br>添加用户，设置权限。<br>$ influx
+&gt; show users # 查看所有用户
+user admin
+---- -----
+
+# 创建 admin 用户，设置密码为 admin，注意 password 要用单引号
+&gt; create user "admin" with password 'admin' with all privileges
+复制<br>再次查看用户信息，发现 admin 为 true<br>&gt; show users
+user admin
+---- -----
+admin true
+复制<br>InfluxDB 默认禁用认证策略的，需要手动打开<br># 编辑配置文件，把 [http] 下的 auth-enabled 选项设置为 true
+$ sudo vim /etc/influxdb/influxdb.conf
+[http]
+  ...
+  auth-enabled = true
+  ...
+  
+# 重启服务，配置生效
+$ sudo systemctl restart influxdb.service
+复制<br><br><br><br>相比于 nmon，新版的 njmon 输出为更加通用的 JSON 格式，目前持续更新中。<br>
+所有安装文件都在 SourceForge 上： <a rel="noopener" class="external-link" href="https://sourceforge.net/projects/nmon/files/" target="_blank">https://sourceforge.net/projects/nmon/files/</a> 其中有编译好的 binaries，也有源码。源码只有一个单独的 .C 文件 + Makefile，在该目录下执行make命令即可快速编译得到 njmon 二进制。<br>为了方便使用，可以把二进制放到/usr/local/bin/njmon目录下。njmon 的一些简单命令为<br>njmon -? # 查看帮助
+njmon -s 10 -c 20 # -s 指定采样间隔(seconds), -c指定采样次数
+njmon -f -m ./ # -f把结果输出为文件，-m指定文件输出目录
+njmon -n -P # -n表示不打印njmon_pid, -P打印每个进程详细信息
+复制<br><br>njmon 开发主页还提供了一些好用的工具脚本，可以在 SourceForge 上自行查找。<br># 下载
+wget https://sourceforge.net/projects/nmon/files/njmon_tools_v56.zip
+
+# 工具文件列表
+line2pretty.py   njmon2influxturbo.py  njmond.py         pretty2line.py
+njmon2influx.py  njmond.conf           njmonold2line.py
+复制<br>其中 njmon2influx 脚本需要安装 influx 库。Python3.9.15 实测可以通过 conda 安装：<br>conda install -c conda-forge influxdb -y # 官网指定版本4.1.1，但5.3.1也可用
+复制<br>这里注意，应将njmon_tools 中 python 脚本的默认执行程序路径（.py的第一行）改成 conda 环境的 python 路径。为了方便在终端使用，将 python 脚本改为可执行文件：<br>mv njmon2influx.py njmon2influx
+chmod +x njmon2influx
+复制<br><br>首先，建立配置文件 njmond.conf<br>{
+    "njmon_port": 8181,
+    "njmon_secret": "ignore",
+    "data_inject": false,
+    "data_json": true,
+    "directory": "/home/njmon/data",
+    "influx_host": "localhost",
+    "influx_port": 8086, # influxDB默认端口
+    "influx_user": "admin",
+    "influx_password": "admin",
+    "influx_dbname": "njmon",
+    "workers": 2,
+    "debug": true,
+    "batch": 1 #多少条数据一起加入influx，写1就是实时更新(stream mode)
+}
+复制<br>如果想要实时监控，njmon正常采集数据，通过 pipline 导入到脚本中处理。<br># 间隔1秒，采集1分钟
+$ njmon -s 1 -c 60 -n | njmon2influx njmond.conf
+复制<br>注意这里要用 -n 避免 njmon 把自己的PID打印出来，否则 njmon2influx 脚本会报错。<br>如果只想看已经采集的数据，那么njmon输出json即可<br>cat XXX.json | njmon2influx njmond.conf
+复制<br>最后，可以登录 InfluxDB 查询数据采集情况。<br># 登录数据库
+influx -username admin -password admin
+Connected to http://localhost:8086 version 1.8.10
+InfluxDB shell version: 1.8.10
+
+# 使用 njmon
+&gt; use njmon
+Using database njmon
+
+# 查看 measurements，有数据表示已经采集到
+&gt; show measurements
+name: measurements
+name
+----
+cpu_total
+cpuinfo
+cpus
+disks
+...
+复制<br><br><br><br>Grafana 是一个跨平台的开源度量分析和可视化工具，可以将采集的数据可视化并及时通知。首先下载安装：<br>sudo apt-get install -y adduser libfontconfig1 # 一般都安装过
+wget https://dl.grafana.com/oss/release/grafana_9.4.0~beta1_amd64.deb
+chmod +x grafana_9.4.0_beta1_amd64.deb
+sudo dpkg -i grafana_9.4.0_beta1_amd64.deb
+复制<br>
+官方教程： <a rel="noopener" class="external-link" href="https://grafana.com/grafana/download" target="_blank">https://grafana.com/grafana/download</a>
+<br>然后启动服务<br># 启动并验证
+$ sudo systemctl daemon-reload
+$ sudo systemctl start grafana-server
+$ sudo systemctl status grafana-server # 可以看到绿色的运行状态标志
+
+# 如果需要开机自动启动，那么
+$ sudo systemctl enable grafana-server.service
+复制<br>现在可以打开 Grafana 的 GUI 了，地址为 http://localhost:3000 ，默认用户名密码为 admin / admin。<br><br>安装两个绘图插件，都需要 sudo 权限。<br># 插件链接：https://grafana.com/grafana/plugins/grafana-clock-panel
+$ sudo grafana-cli plugins install grafana-clock-panel # 自动下载安装
+
+# 插件链接：https://grafana.com/grafana/plugins/grafana-piechart-panel
+$ sudo grafana-cli plugins install grafana-piechart-panel 
+
+# 重启生效
+$ sudo service grafana-server restart
+复制<br><br>进入GUI，首先把 influxDB 添加为绘图的数据源。选择Add your first data source。<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202143131.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202143131.png" style="width: 900px; max-width: 100%;"><br>
+选择 InfluxDB，主要填写 URL、Database名、用户名密码。<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202143721.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202143721.png" style="width: 900px; max-width: 100%;"><br>填写完毕后点击“Save &amp; test”，提示找到 measurements (概念类似于table)，配置成功。<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202143853.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202143853.png" style="width: 600px; max-width: 100%;"><br><br>njmon 模板可以在Grafana主页中搜索到 <a rel="noopener" class="external-link" href="https://grafana.com/grafana/dashboards?search=njmon" target="_blank">https://grafana.com/grafana/dashboards?search=njmon</a> ，笔者选择 “njmon Linux Simple Six Plus v67” (13908)。可以点击 “Copy ID to clipboard” 复制ID。<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202144711.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202144711.png" style="width: 900px; max-width: 100%;"><br>回到 Grafana GUI，选择 Import dashboad，将复制的 ID 载入。<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202152017.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202152017.png" style="width: 900px; max-width: 100%;"><br>导入完成后可以看到监控数据<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230202152224.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202152224.png" style="width: 900px; max-width: 100%;"><br><br>Dashboard 上的每个 panel 都可以编辑，里面的 Query 的语法就是 influxDB 数据库的查询语法。比如想要在某个 measurement 中查询 chrome 命令对应的信息，把我们关心的 column 数值显示出来。那么在 Garfana 的编辑中，典型的查询语句是：<br>SELECT mean("concerned_column_name") FROM "measurement_name" WHERE ("host" =~ /^$LINUXHOST$/) AND ("cmd"='chrome') AND $timeFilter GROUP BY time($__interval) fill(null) 
+复制<br>这句话的意思是，按照WHRER引导的查询条件提取数据，然后根据预设的time interval在一段时间内取均值（mean命令），类似于移动平均，得到最终的一组数值来进行绘图。<br>也可以使用 Grafana 提供的 UI 来配置查询语句：<br>
+<img alt="index/IT/基于Njmon和Grafana实现性能实时监控/Pasted image 20230203155715.png" src="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230203155715.png" style="width: 900px; max-width: 100%;"><br><br><br>这套系统资源监控方案配置简单，数据采集细节方便修改，界面丰富。<br>另，如果单机监控自动化测试结果，还可以使用 Task Spooler。<br><br><br>
+<br><a rel="noopener" class="external-link" href="https://www.cnblogs.com/daodaotest/p/12508181.html" target="_blank">https://www.cnblogs.com/daodaotest/p/12508181.html</a>
+<br>IBM <a rel="noopener" class="external-link" href="https://www.ibm.com/support/pages/linux-installing-influxdb-18-and-grafana-7-and-njmon" target="_blank">https://www.ibm.com/support/pages/linux-installing-influxdb-18-and-grafana-7-and-njmon</a>
+]]></description><link>https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/基于njmon和grafana实现性能实时监控.html</link><guid isPermaLink="false">index/IT/基于Njmon和Grafana实现性能实时监控/基于Njmon和Grafana实现性能实时监控.md</guid><dc:creator><![CDATA[kongexp]]></dc:creator><pubDate>Fri, 07 Jun 2024 15:19:34 GMT</pubDate><enclosure url="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202143131.png" length="0" type="image/png"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/pasted-image-20230202143131.png&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[利用Jupyter工具Voila创建网页服务]]></title><description><![CDATA[<a class="tag" href="https://kongexp.github.io/blog/?query=tag:Jupyter" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#Jupyter</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:Voila" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#Voila</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:IPyWidgets" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#IPyWidgets</a> <a class="tag" href="https://kongexp.github.io/blog/?query=tag:网页" style="background-color: rgb(4, 108, 116); color: white; font-weight: 700; border: none; border-radius: 1em; padding: 0.2em 0.5em;">#网页</a> 
+ <br><a href="https://kongexp.github.io/blog?query=tag:Jupyter" class="tag" target="_blank" rel="noopener">#Jupyter</a> <a href="https://kongexp.github.io/blog?query=tag:Voila" class="tag" target="_blank" rel="noopener">#Voila</a> <a href="https://kongexp.github.io/blog?query=tag:IPyWidgets" class="tag" target="_blank" rel="noopener">#IPyWidgets</a> <a href="https://kongexp.github.io/blog?query=tag:网页" class="tag" target="_blank" rel="noopener">#网页</a><br>Author: kongexp<br>
+Created: 2022-08-25<br>
+Updated: 2022-08-26<br>
+<br><a data-href="#Introduction" href="https://kongexp.github.io/blog/#Introduction" class="internal-link" target="_self" rel="noopener">Introduction</a>
+
+<br><a data-href="#应用场景" href="https://kongexp.github.io/blog/#应用场景" class="internal-link" target="_self" rel="noopener">应用场景</a>
+<br><a data-href="#解决方案" href="https://kongexp.github.io/blog/#解决方案" class="internal-link" target="_self" rel="noopener">解决方案</a>
+<br><a data-href="#最终效果" href="https://kongexp.github.io/blog/#最终效果" class="internal-link" target="_self" rel="noopener">最终效果</a>
+
+
+<br><a data-href="#实现教程" href="https://kongexp.github.io/blog/#实现教程" class="internal-link" target="_self" rel="noopener">实现教程</a>
+
+<br><a data-href="#Step1 环境配置" href="https://kongexp.github.io/blog/#Step1_环境配置" class="internal-link" target="_self" rel="noopener">Step1 环境配置</a>
+
+<br><a data-href="#Voila" href="https://kongexp.github.io/blog/#Voila" class="internal-link" target="_self" rel="noopener">Voila</a>
+<br><a data-href="#JupyterLab" href="https://kongexp.github.io/blog/#JupyterLab" class="internal-link" target="_self" rel="noopener">JupyterLab</a>
+<br><a data-href="#IpyWidgests" href="https://kongexp.github.io/blog/#IpyWidgests" class="internal-link" target="_self" rel="noopener">IpyWidgests</a>
+<br><a data-href="#IPyFilechooser" href="https://kongexp.github.io/blog/#IPyFilechooser" class="internal-link" target="_self" rel="noopener">IPyFilechooser</a>
+
+
+<br><a data-href="#Step2 设计服务UI" href="https://kongexp.github.io/blog/#Step2_设计服务UI" class="internal-link" target="_self" rel="noopener">Step2 设计服务UI</a>
+
+<br><a data-href="#UI绘制教程" href="https://kongexp.github.io/blog/#UI绘制教程" class="internal-link" target="_self" rel="noopener">UI绘制教程</a>
+<br><a data-href="#重点：基本框架UI代码" href="https://kongexp.github.io/blog/#重点：基本框架UI代码" class="internal-link" target="_self" rel="noopener">重点：基本框架UI代码</a>
+
+
+<br><a data-href="#Extra: 用户管理和登录认证" href="https://kongexp.github.io/blog/#Extra:_用户管理和登录认证" class="internal-link" target="_self" rel="noopener">Extra: 用户管理和登录认证</a>
+
+<br><a data-href="#用户管理" href="https://kongexp.github.io/blog/#用户管理" class="internal-link" target="_self" rel="noopener">用户管理</a>
+<br><a data-href="#登录认证" href="https://kongexp.github.io/blog/#登录认证" class="internal-link" target="_self" rel="noopener">登录认证</a>
+
+
+<br><a data-href="#Step3 启动网页服务" href="https://kongexp.github.io/blog/#Step3_启动网页服务" class="internal-link" target="_self" rel="noopener">Step3 启动网页服务</a>
+
+
+<br><a data-href="#总结" href="https://kongexp.github.io/blog/#总结" class="internal-link" target="_self" rel="noopener">总结</a>
+<br><br><br><br>当算法写好，有少量内部用户需要使用我们的代码完成固定流程计算，如何满足这种需求？如果一两次，可以允许用户登录本机，并提供脚本与使用方法给用户。但用户不一定有代码技能，多次登录本机也危害数据安全，甚至有时难以教会用户使用方法而需要自己每次重复劳动执行服务。如何解决这些问题呢？<br><br>利用 JupyterLab + IPyWidgets 可以快速写出UI，其中空间点击触发写好的算法。而后使用 Jupyter 项目组开发的 Voila 工具将写好的包含 UI 的 .ipynb 文件执行为网页服务，提供给用户。<br><br>这是放在局域网的内部服务，如有需要还可以加一个登录认证。<br>
+<img alt="Pasted image 20220826135235.png" src="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220826135235.png" style="width: 900px; max-width: 100%;"><br><br><br><br>需要额外安装下列工具<br><br>这是 Jupyter 项目组开发的一个把 jupyter notebook 转换为网页应用的工具。而 notebook 内需要用 IPywidgets 定义UI。<br>conda install voila -c conda-forge
+复制<br>这里建议先安装 Voila，是因为 Voila 对 JupyterLab 版本有限制，Voila和 JupyterLab 版本不匹配可能造成控件渲染失败。此外，Voila 各个版本对包的需求有显著变化。截止完稿，Voila最新版本为0.3.6，对新版 JupyterLab 特性支持很好。<br><br>用来写.ipynb代码的工具，是Jupyter Notebook的升级版，界面更加友好。<br>conda install jupyterlab
+复制<br>Jupyter系列工具的配置文件都是.py文件，可以按需修改。<br><br>用于在 notebook 上绘制UI，安装方式为<br>conda install -c conda-forge ipywidgets
+复制<br><br>如果想实现server上的文件选取，可以调用现成的IPyFilechooser，它是用IPyWidgets实现的带图标的文件选择控件，实现效果如下图<br>
+<img alt="Pasted image 20220826133447.png" src="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220826133447.png" style="width: 900px; max-width: 100%;"><br>安装方式为<br>conda install -c conda-forge ipyfilechooser
+复制<br><br>首先启动JupyterLab服务，准备编写自己的.ipynb<br>jupyter lab --no-browser --ip "*"
+复制<br><br>如何写UI呢？IpyWidgets的使用比较简单，比如创建一个整数的滑块<br>
+<img alt="Pasted image 20220825181836.png" src="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220825181836.png" style="width: 600px; max-width: 100%;"><br>IpyWidgets 的核心概念是"widget"，它里面所有的控件、包裹控件的容器，都是 widget。widget 建立时可以给定属性（如上图），也可以在后期得到 widget 值、状态并修改。显示 widget 可以直接在 jupyter cell 中打出 widget 变量名，或者调用 IPython 库的 display 函数。<br>详细的介绍可以看 IpyWidgets 的文档，这里建议运行下面的交互式说明，能帮助你非常快地掌握常用控件的使用方法。<br>
+<a rel="noopener" class="external-link" href="https://mybinder.org/v2/gh/jupyter-widgets/ipywidgets/8.0.1?urlpath=lab/tree/docs/source/examples/Widget%20List.ipynb" target="_blank">https://mybinder.org/v2/gh/jupyter-widgets/ipywidgets/8.0.1?urlpath=lab/tree/docs/source/examples/Widget%20List.ipynb</a><br><br>这里提供一个可以运行的UI参考代码：<br>import ipywidgets as widgets  
+from ipyfilechooser import FileChooser  
+import os  
+import json  
+import base64  
+import datetime  
+  
+class ServiceUI:  
+    """  
+    Main entry, the functional UI of this application.    Input User.    """  
+    def __init__(self, user):  
+        self.user = user  
+        self.dir_main = os.getcwd()  
+  
+        dir_user = os.path.join(self.dir_main, self.user)  
+        if not os.path.exists(dir_user):  
+            os.mkdir(dir_user)  
+  
+        self.dir_all_cases = os.path.join(self.dir_main, self.user, "cases")  
+        if not os.path.exists(self.dir_all_cases):  
+            os.mkdir(self.dir_all_cases)  
+  
+        self.dir_all_mols = os.path.join(self.dir_main, self.user, "mols")  
+        if not os.path.exists(self.dir_all_mols):  
+            os.mkdir(self.dir_all_mols)  
+  
+        self.zip_name = "{}.zip".format(self.user)  
+  
+        self.me = widgets.VBox([self.__load_create_new_case(), self.__load_upload(), self.__load_options(),  
+                                self.__load_run(), self.__load_download()])  
+  
+    def show(self):  
+        return self.me  
+  
+    def __load_create_new_case(self):  
+        self.new_case_name = widgets.Text(description='New Case Name:', layout={"width": "50%"})  
+        self.create_new_case = widgets.Button(description="Create New Case")  
+  
+        def create_new_case(a):  
+            os.chdir(self.dir_main)  
+            new_case_name = self.new_case_name.value.strip()  
+            if not new_case_name:  
+                print("New case name is empty!")  
+                return  
+            dir_case = os.path.join(self.user, "cases", new_case_name)  
+            if os.path.exists(dir_case):  
+                print("The case {} already exists!".format(new_case_name))  
+            else:  
+                os.mkdir(dir_case)  
+                dir_mol = os.path.join(self.dir_all_mols, new_case_name)  
+                os.mkdir(dir_mol)  
+  
+                self.case_name.options = [i for i in sorted(os.listdir(self.dir_all_cases)) if not i.startswith(".")]  
+  
+        self.create_new_case.on_click(create_new_case)  
+        return widgets.HBox([self.new_case_name, self.create_new_case],  
+                            layout={"width": "50%", "border": '1px solid gray'})  
+  
+    def __load_upload(self):  
+        """ Upload files to server """  
+  
+        layout = {"width": "80%"}  
+  
+        title_upload = widgets.Label(value="Upload Files")  
+  
+        self.file_chooser = FileChooser(self.user, layout=layout)  
+        self.file_chooser.sandbox_path = self.user  
+        button_select = self.file_chooser.children[2].children[0]  
+        button_select.description = "Select Directory"  
+        button_select.layout = {"width": "40%"}  
+  
+        def upload_file(change):  
+            # both files and zip  
+            os.chdir(self.dir_main)  
+  
+            if not change.new:  
+                return  
+  
+            dirpath = self.file_chooser.value  
+            if not os.path.isdir(dirpath):  
+                dirpath = os.path.dirname(dirpath)  
+            if not dirpath:  
+                print("Hasn't chosen the directory!")  
+                return  
+  
+            upload = change.owner  
+  
+            if "Zip" in upload.description:  
+                with open("tmp_zip.zip", "wb") as z:  
+                    z.write(upload.value[0]["content"])  
+  
+            else:  
+                for filename, mol in upload.value.items():  
+                    with open(os.path.join(dirpath, filename), "w") as c:  
+                        c.write(mol["content"].decode())  
+            print("{} files Uploaded.\n".format(upload._counter))  
+            upload.value.clear()  
+            upload._counter = 0  
+  
+        self.upload_mols = widgets.FileUpload(accept=".mol", multiple=True, layout=layout)  
+        self.upload_mols.description = "Upload mols"  
+        self.upload_mols.observe(upload_file)  
+  
+        self.upload_zip = widgets.FileUpload(accept=".zip", multiple=False, layout=layout)  
+        self.upload_zip.description = "Upload Zip of a mol Folder"  
+        self.upload_zip.observe(upload_file)  
+  
+        return widgets.VBox([title_upload, self.file_chooser, self.upload_mols, self.upload_zip],  
+                            layout={"width": "50%", "border": '1px solid gray'})  
+  
+    def __load_options(self):  
+  
+        self.case_name = widgets.Dropdown(  
+            options=[i for i in sorted(os.listdir(self.dir_all_cases)) if not i.startswith(".")],  
+            description='Case Name:', disabled=False)  
+        self.option1 = widgets.BoundedIntText(description='parameter:', value=15, min=1)  
+        return widgets.VBox([self.case_name, self.option1])  
+  
+    def __load_run(self):  
+  
+        def performFunction(a):  
+            case_name = self.case_name.value  
+            dir_case = os.path.join(self.dir_all_cases, case_name)  
+  
+            # Perform computation  
+            os.chdir(dir_case)  
+            self.run.disabled = True  
+            print("I am running... ")  # Replace this line with your function  
+            self.run.disabled = False  
+            os.chdir(self.dir_main)  
+  
+        self.run = widgets.Button(description="RUN")  
+        self.run.on_click(performFunction)  
+        process_bar = widgets.IntProgress(0)  
+  
+        return widgets.VBox([self.run, process_bar])  
+  
+    def genDownloadLink(self):  
+        """ Generate a button to download zip file of your result """  
+        os.chdir(self.dir_main)  
+        with open(self.zip_name, "rb") as f:  
+            res = f.read()  
+        # FILE  
+        b64 = base64.b64encode(res)  
+        payload = b64.decode()  
+        # BUTTONS  
+        html_buttons = '''&lt;html&gt;  
+        &lt;head&gt;        &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;        &lt;/head&gt;        &lt;body&gt;        &lt;a download="{filename}" href="data:text/csv;base64,{payload}" download&gt;        &lt;button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning"&gt;Download Result&lt;/button&gt;        &lt;/a&gt;        &lt;/body&gt;        &lt;/html&gt;        '''        html_button = html_buttons.format(payload=payload, filename=self.zip_name)  
+        return html_button  
+  
+    def __load_download(self):  
+        def zipResult(a):  
+            self.zip.disabled = True  
+            os.chdir(self.dir_main)  
+            case_name = self.case_name.value  
+            dir_case = os.path.join(self.dir_all_cases, case_name)  
+  
+            os.system("rm {}".format(self.zip_name))  
+            zip_dir_name = "{}_{}".format(self.user, case_name)  
+            os.system("ln -s {} {}".format(dir_case, zip_dir_name))  # use soft linker  
+            os.system("zip -r {} {}".format(self.zip_name, zip_dir_name))  
+            os.system("rm {}".format(zip_dir_name))  
+  
+            self.download.value = self.genDownloadLink()  
+            self.zip.disabled = False  
+  
+        self.zip = widgets.Button(description="Zip Result")  
+        self.zip.on_click(zipResult)  
+        self.download = widgets.HTML("")  
+        return widgets.HBox([self.zip, self.download])
+复制<br><br>作为一个网页应用，用户无法访问终端，基本保证了本机的数据安全。另外，在设计服务时，可以只开放用户自己文件夹的内容给用户，保证不同用户数据隔离。对于局域网服务来说，这种安全工作基本足够了。<br><br>Voila本身不提供用户管理或登录认证功能，我们需要自己用文件结构和代码实现它们。这里建议把用户数据分不同的文件夹存放，每个用户通过UI只能在自己的文件夹下上传下载和运行计算，这样就实现了简单的用户数据分离。比如该服务的文件这样组织：<br>.
+├── Service.ipynb # 进入服务的主UI，也是voila渲染的对象
+├── UI_codes # 所有代码放在这里
+├── user1 # 每个用户有自己的文件夹
+│   ├── case
+│   └── data
+├── user2
+│   ├── case
+│   └── data
+└── user_password.db # 本服务注册的用户和密码,各种形式都可
+复制<br><br>可以用 IpyWidgets 绘制登录框，用户名密码正确则继续渲染功能UI，否则停留在登录界面。控件渲染的控制依靠 IpyWidgets.Output 实现。<br>这里提供一个代码样例，该样例实现的登录界面效果为<br>
+<img alt="Pasted image 20220826114545.png" src="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220826114545.png" style="width: 600px; max-width: 100%;"><br>具体代码如下：<br>def authentificated_entry(filepath_authen):
+    """
+    An entry to functional UI with authentification.
+    Args:
+        filepath_authen: Path of the text file recording user name and pwd. The file is like: "user1, 235 \n user2, 53s2%s"
+    """
+    # 简单示例，比如明文存储在文本文件
+    with open(filepath_authen, "r") as f:
+        authen_str = f.read()
+    authen_dict = {j[0].strip(): j[1].strip() for j in [i.split(",") for i in authen_str.strip().split("\n")]}
+
+    # create user name and password widgets
+    user = widgets.Text(description="User Name")
+    password = widgets.Password(description="Password")
+
+    # use output widget to control the appearance of widgests
+    out = widgets.Output()
+    def check_authen(v):
+        if authen_dict.get(user.value):
+            if authen_dict[user.value] == password.value:
+                # Successful Login
+                with out:
+                    out.clear_output() 
+                    display(widgets.Label(user.value))
+                    display(FunctionUI(user.value)) # Real UI
+            else:
+                print("Wrong password")
+        else:
+            print("Wrong User Name")
+
+    login = widgets.Button(description="Log In")
+    login.on_click(check_authen)
+
+    with out:
+        display(widgets.VBox([user, password, login]))
+    return out
+复制<br><br>写好 Jupyter 后，接下来用 Voila 将它转换为网页服务。Voila 渲染过程是依次执行每个 cell 的代码。<br>注意，voila 没有 --ip 选项，等价的选项为 --Voila.ip。另外，可以加上 --debug 关键字，打印错误信息。<br>voila --no-browser Service.ipynb --Voila.ip="*" --debug
+复制<br><br><br>有 Jupyter 使用经验的朋友，需要额外学习的主要是 IPyWidgets 的使用方法，从而设计符合自己要求的 UI。Voila 本身无需复杂配置，一句代码启动服务即可。此外需要注意用户数据分离和登录认证的实现，这里提供一种方案作为参考。]]></description><link>https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/利用jupyter工具voila创建网页服务.html</link><guid isPermaLink="false">index/IT/利用Jupyter工具Voila创建网页服务/利用Jupyter工具Voila创建网页服务.md</guid><dc:creator><![CDATA[kongexp]]></dc:creator><pubDate>Fri, 07 Jun 2024 15:13:19 GMT</pubDate><enclosure url="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220826135235.png" length="0" type="image/png"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/pasted-image-20220826135235.png&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[关于我]]></title><description><![CDATA[ 
+ <br>空酱 (kongexp)<br>
+关注 C++ / Python / ML / 计算化学，对自动化的一切感兴趣。<br>博客暂未开通评论功能，可以通过Github联系我： <a rel="noopener" class="external-link" href="https://github.com/kongexp" target="_blank">https://github.com/kongexp</a>]]></description><link>https://kongexp.github.io/blog/index/关于我.html</link><guid isPermaLink="false">index/关于我.md</guid><dc:creator><![CDATA[kongexp]]></dc:creator><pubDate>Fri, 07 Jun 2024 13:24:09 GMT</pubDate></item><item><title><![CDATA[index]]></title><description><![CDATA[ 
+ <br><br><br>
+<br>
+计算化学
+
+<br><a data-href="量化计算中电子密度的积分方法" href="https://kongexp.github.io/blog/index/计算化学/量化计算中电子密度的积分方法/量化计算中电子密度的积分方法.html" class="internal-link" target="_self" rel="noopener">量化计算中电子密度的积分方法</a>
+
+
+<br>
+IT
+
+<br>
+<a data-href="基于Njmon和Grafana实现性能实时监控" href="https://kongexp.github.io/blog/index/it/基于njmon和grafana实现性能实时监控/基于njmon和grafana实现性能实时监控.html" class="internal-link" target="_self" rel="noopener">基于Njmon和Grafana实现性能实时监控</a>
+
+<br>
+<a data-href="利用Jupyter工具Voila创建网页服务" href="https://kongexp.github.io/blog/index/it/利用jupyter工具voila创建网页服务/利用jupyter工具voila创建网页服务.html" class="internal-link" target="_self" rel="noopener">利用Jupyter工具Voila创建网页服务</a>
+
+
+
+<br>]]></description><link>https://kongexp.github.io/blog/index/index.html</link><guid isPermaLink="false">index/index.md</guid><dc:creator><![CDATA[kongexp]]></dc:creator><pubDate>Fri, 07 Jun 2024 14:10:45 GMT</pubDate></item></channel></rss>
