@@ -1,2 +1,2 @@
 # blog
-My blog about C++, Python, Machine Learning and interesting techniques.
+My blog about Computational Chemistry, C++/CUDA/Python, Machine Learning and interesting techniques.
